@@ -1,9 +1,8 @@
 streamlit>=1.28.0
 Pillow>=10.0.0
-numpy>=1.26.0
-pymongo>=4.6.0
-deepface>=0.0.75
-opencv-python>=4.8.0
-tensorflow>=2.14.0
-python-dotenv>=1.0.0
+numpy
+pymongo
+deepface
+opencv-python-headless
 cloudinary
+python-dotenv
