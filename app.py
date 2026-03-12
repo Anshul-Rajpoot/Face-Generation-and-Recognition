@@ -123,34 +123,34 @@ if mode == "Upload Image Search":
                     # ---------------- Apply Threshold ----------------
 
                    filtered_results = [
-    r for r in results if r.get("score", 0) >= threshold
-]
-
-if filtered_results:
-
-    st.success(f"Found {len(filtered_results)} matches!")
-
-    cols = st.columns(len(filtered_results))
-
-    for idx, match in enumerate(filtered_results):
-
-        with cols[idx]:
-
-            score = match.get("score", 0)
-            name = match.get("name", "Unknown")
-
-            # Correct image field
-            image_url = match.get("image_path") or match.get("image_url")
-
-            if image_url:
-                st.image(image_url, width=200)
-
-            st.metric(
-                "Match Score",
-                f"{round(score * 100,1)}%"
-            )
-
-            st.subheader(name)
-
-else:
-    st.warning("No matches above threshold")
+                            r for r in results if r.get("score", 0) >= threshold
+                        ]
+                        
+                        if filtered_results:
+                        
+                            st.success(f"Found {len(filtered_results)} matches!")
+                        
+                            cols = st.columns(len(filtered_results))
+                        
+                            for idx, match in enumerate(filtered_results):
+                        
+                                with cols[idx]:
+                        
+                                    score = match.get("score", 0)
+                                    name = match.get("name", "Unknown")
+                        
+                                    # Correct image field
+                                    image_url = match.get("image_path") or match.get("image_url")
+                        
+                                    if image_url:
+                                        st.image(image_url, width=200)
+                        
+                                    st.metric(
+                                        "Match Score",
+                                        f"{round(score * 100,1)}%"
+                                    )
+                        
+                                    st.subheader(name)
+                        
+                        else:
+                            st.warning("No matches above threshold")
