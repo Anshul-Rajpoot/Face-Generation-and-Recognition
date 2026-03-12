@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 from face_utils import get_embedding
 from database import search_faces, enroll_face
 
+# ---------------- Load Environment ----------------
+
 load_dotenv()
 
 # ---------------- Cloudinary ----------------
@@ -19,11 +21,11 @@ cloudinary.config(
     api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
-# ---------------- UI ----------------
+# ---------------- Page Setup ----------------
 
 st.set_page_config(page_title="Face Matcher AI", layout="centered")
-st.title("👤 Face Recognition Search")
 
+st.title("👤 Face Recognition Search")
 
 # ======================================================
 # SIDEBAR : ENROLL FACE
@@ -37,7 +39,7 @@ with st.sidebar:
 
     new_img = st.file_uploader(
         "Upload Image to Save",
-        type=['jpg','png','jpeg'],
+        type=["jpg", "png", "jpeg"],
         key="enroll"
     )
 
@@ -57,11 +59,13 @@ with st.sidebar:
                     new_img.seek(0)
 
                     upload_result = cloudinary.uploader.upload(new_img)
+
                     image_url = upload_result["secure_url"]
 
                     if enroll_face(new_name, vec, image_url):
 
                         st.success(f"{new_name} added successfully!")
+
                         st.image(image_url, width=200)
 
                     else:
@@ -71,86 +75,80 @@ with st.sidebar:
                     st.error("No face detected")
 
         else:
-            st.warning("Provide name and image")
+            st.warning("Please provide name and image")
 
 
 # ======================================================
-# MODE SELECTOR
+# IMAGE SEARCH SECTION
 # ======================================================
 
-mode = st.radio(
-    "Select Mode",
-    ["Upload Image Search"]
+uploaded_file = st.file_uploader(
+    "Choose a face image to search...",
+    type=["jpg", "png", "jpeg"]
 )
 
+# ---------------- Threshold ----------------
 
-# ======================================================
-# IMAGE SEARCH
-# ======================================================
+threshold = st.slider(
+    "Match Threshold",
+    min_value=0.4,
+    max_value=0.9,
+    value=0.65,
+    step=0.05
+)
 
-if mode == "Upload Image Search":
+if uploaded_file:
 
-    uploaded_file = st.file_uploader(
-        "Choose a face image to search...",
-        type=['jpg','png','jpeg']
-    )
+    img = Image.open(uploaded_file)
 
-    # ---------------- Threshold Slider ----------------
+    st.image(img, caption="Uploaded Image", width=220)
 
-    threshold = st.slider(
-        "Match Threshold",
-        min_value=0.4,
-        max_value=0.9,
-        value=0.65,
-        step=0.05
-    )
+    if st.button("Search for Matches"):
 
-    if uploaded_file:
+        with st.spinner("Searching..."):
 
-        img = Image.open(uploaded_file)
-        st.image(img, caption="Uploaded Image", width=200)
+            query_vec = get_embedding(np.array(img))
 
-        if st.button("Search for Matches"):
+            if query_vec is not None:
 
-            with st.spinner("Searching..."):
+                results = search_faces(query_vec, limit=5)
 
-                query_vec = get_embedding(np.array(img))
+                # ---------------- Apply Threshold ----------------
 
-                if query_vec is not None:
+                filtered_results = [
+                    r for r in results if r.get("score", 0) >= threshold
+                ]
 
-                    results = search_faces(query_vec, limit=5)
+                if filtered_results:
 
-                    # ---------------- Apply Threshold ----------------
+                    st.success(f"Found {len(filtered_results)} matches!")
 
-                   filtered_results = [
-                            r for r in results if r.get("score", 0) >= threshold
-                        ]
-                        
-                        if filtered_results:
-                        
-                            st.success(f"Found {len(filtered_results)} matches!")
-                        
-                            cols = st.columns(len(filtered_results))
-                        
-                            for idx, match in enumerate(filtered_results):
-                        
-                                with cols[idx]:
-                        
-                                    score = match.get("score", 0)
-                                    name = match.get("name", "Unknown")
-                        
-                                    # Correct image field
-                                    image_url = match.get("image_path") or match.get("image_url")
-                        
-                                    if image_url:
-                                        st.image(image_url, width=200)
-                        
-                                    st.metric(
-                                        "Match Score",
-                                        f"{round(score * 100,1)}%"
-                                    )
-                        
-                                    st.subheader(name)
-                        
-                        else:
-                            st.warning("No matches above threshold")
+                    cols = st.columns(len(filtered_results))
+
+                    for idx, match in enumerate(filtered_results):
+
+                        with cols[idx]:
+
+                            score = match.get("score", 0)
+
+                            name = match.get("name", "Unknown")
+
+                            image_url = match.get("image_path")
+
+                            if image_url:
+                                st.image(image_url, width=200)
+
+                            st.metric(
+                                "Match Score",
+                                f"{round(score * 100,1)}%"
+                            )
+
+                            st.subheader(name)
+
+                else:
+
+                    st.warning("No matches above threshold")
+
+            else:
+
+                st.error("Face not detected in the uploaded image")
