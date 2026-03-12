@@ -115,7 +115,10 @@ if mode == "Upload Image Search":
                                 )
 
                                 # display image at fixed square size to keep results uniform
-                                st.image(match["image_url"], width=200)
+                                image_url = match.get("image_url") or match.get("image_path")
+
+                                if image_url:
+                                    st.image(image_url, width=200)
                                 st.subheader(match["name"])
 
                     else:
