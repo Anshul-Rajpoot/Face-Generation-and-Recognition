@@ -4,32 +4,42 @@ import numpy as np
 import cloudinary
 import cloudinary.uploader
 import os
-import random
+from dotenv import load_dotenv
 
 from face_utils import get_embedding
 from database import search_faces, enroll_face
 
-from dotenv import load_dotenv
-import os
-
 load_dotenv()
 
 # ---------------- Cloudinary ----------------
+
 cloudinary.config(
     cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
     api_key=os.getenv("CLOUDINARY_API_KEY"),
     api_secret=os.getenv("CLOUDINARY_API_SECRET")
 )
 
+# ---------------- UI ----------------
+
 st.set_page_config(page_title="Face Matcher AI", layout="centered")
 st.title("👤 Face Recognition Search")
 
-# ---------------- Sidebar (Enrollment) ----------------
+
+# ======================================================
+# SIDEBAR : ENROLL FACE
+# ======================================================
+
 with st.sidebar:
+
     st.header("Admin: Add to DB")
 
     new_name = st.text_input("Person Name")
-    new_img = st.file_uploader("Upload Image to Save", type=['jpg','png','jpeg'], key="enroll")
+
+    new_img = st.file_uploader(
+        "Upload Image to Save",
+        type=['jpg','png','jpeg'],
+        key="enroll"
+    )
 
     if st.button("Add to Database"):
 
@@ -52,7 +62,7 @@ with st.sidebar:
                     if enroll_face(new_name, vec, image_url):
 
                         st.success(f"{new_name} added successfully!")
-                        st.image(image_url,width=200)
+                        st.image(image_url, width=200)
 
                     else:
                         st.error("Database save failed")
@@ -73,8 +83,9 @@ mode = st.radio(
     ["Upload Image Search", "Face Builder Search"]
 )
 
+
 # ======================================================
-# MODE 1 : IMAGE UPLOAD SEARCH
+# IMAGE SEARCH
 # ======================================================
 
 if mode == "Upload Image Search":
@@ -87,7 +98,8 @@ if mode == "Upload Image Search":
     if uploaded_file:
 
         img = Image.open(uploaded_file)
-        st.image(img,caption="Uploaded Image",width=200)
+
+        st.image(img, caption="Uploaded Image", width=200)
 
         if st.button("Search for Matches"):
 
@@ -97,7 +109,7 @@ if mode == "Upload Image Search":
 
                 if query_vec is not None:
 
-                    results = search_faces(query_vec,limit=3)
+                    results = search_faces(query_vec, limit=3)
 
                     if results:
 
@@ -105,25 +117,27 @@ if mode == "Upload Image Search":
 
                         cols = st.columns(len(results))
 
-                        for idx,match in enumerate(results):
+                        for idx, match in enumerate(results):
 
                             with cols[idx]:
 
+                                score = match.get("score", 0)
+                                name = match.get("name", "Unknown")
+
                                 st.metric(
                                     "Match Score",
-                                    f"{round(match['score']*100,1)}%"
+                                    f"{round(score * 100,1)}%"
                                 )
 
-                                # display image at fixed square size to keep results uniform
                                 image_url = match.get("image_url") or match.get("image_path")
 
                                 if image_url:
                                     st.image(image_url, width=200)
-                                st.subheader(match["name"])
+
+                                st.subheader(name)
 
                     else:
                         st.warning("No matches found")
 
                 else:
                     st.error("Face not detected")
-
