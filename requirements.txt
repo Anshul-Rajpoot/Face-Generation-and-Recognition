@@ -5,4 +5,5 @@ pymongo
 opencv-python-headless
 cloudinary
 python-dotenv
-face-recognition
+insightface
+onnxruntime
