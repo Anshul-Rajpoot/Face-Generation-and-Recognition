@@ -1,20 +1,30 @@
-from deepface import DeepFace
 import numpy as np
+from insightface.app import FaceAnalysis
+
+# Load model once (important for Streamlit performance)
+app = FaceAnalysis(name="buffalo_l")
+app.prepare(ctx_id=0)   # ctx_id=0 for CPU
+
 
 def get_embedding(image_input):
     """
-    Generates a 128-d embedding using Facenet.
-    image_input can be a path or a numpy array from Streamlit.
+    Generates a face embedding using InsightFace.
+    image_input should be a numpy array (from Streamlit/PIL).
     """
+
     try:
-        # Use Facenet for 128-d vectors (matches the MongoDB index)
-        results = DeepFace.represent(
-            img_path=image_input, 
-            model_name="Facenet", 
-            enforce_detection=True,
-            detector_backend="opencv"
-        )
-        return results[0]["embedding"]
+        # Detect faces
+        faces = app.get(image_input)
+
+        if len(faces) == 0:
+            return None
+
+        # Get embedding of first detected face
+        embedding = faces[0].embedding
+
+        # Convert to list for MongoDB compatibility
+        return embedding.tolist()
+
     except Exception as e:
-        print(f"Error in face detection: {e}")
+        print(f"Face detection error: {e}")
         return None
