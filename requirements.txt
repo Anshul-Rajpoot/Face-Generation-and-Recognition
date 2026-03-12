@@ -1,8 +1,8 @@
-streamlit>=1.28.0
-Pillow>=10.0.0
+streamlit
+pillow
 numpy
 pymongo
-deepface
 opencv-python-headless
 cloudinary
 python-dotenv
+face-recognition
