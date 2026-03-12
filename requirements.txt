@@ -6,3 +6,4 @@ deepface>=0.0.75
 opencv-python>=4.8.0
 tensorflow>=2.14.0
 python-dotenv>=1.0.0
+cloudinary

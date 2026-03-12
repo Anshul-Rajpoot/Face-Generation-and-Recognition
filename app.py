@@ -1,76 +1,126 @@
 import streamlit as st
 from PIL import Image
 import numpy as np
+import cloudinary
+import cloudinary.uploader
 import os
+import random
+
 from face_utils import get_embedding
 from database import search_faces, enroll_face
 
-# Create a folder to store enrolled images locally
-IMAGE_DIR = "captured_images"
-if not os.path.exists(IMAGE_DIR):
-    os.makedirs(IMAGE_DIR)
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+
+# ---------------- Cloudinary ----------------
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET")
+)
 
 st.set_page_config(page_title="Face Matcher AI", layout="centered")
 st.title("👤 Face Recognition Search")
 
-# --- Sidebar: Enrollment ---
+# ---------------- Sidebar (Enrollment) ----------------
 with st.sidebar:
     st.header("Admin: Add to DB")
+
     new_name = st.text_input("Person Name")
-    new_img = st.file_uploader("Upload Image to Save", type=['jpg', 'png', 'jpeg'], key="enroll")
-    
+    new_img = st.file_uploader("Upload Image to Save", type=['jpg','png','jpeg'], key="enroll")
+
     if st.button("Add to Database"):
+
         if new_name and new_img:
+
             with st.spinner(f"Enrolling {new_name}..."):
-                # 1. Process Image
+
                 img = Image.open(new_img)
                 img_array = np.array(img)
-                
-                # 2. Get Embedding
+
                 vec = get_embedding(img_array)
-                
-                if vec:
-                    # 3. Save Image Locally
-                    file_path = os.path.join(IMAGE_DIR, f"{new_name.replace(' ', '_')}.jpg")
-                    img.save(file_path)
-                    
-                    # 4. Save to MongoDB
-                    if enroll_face(new_name, vec, file_path):
-                        st.success(f"Successfully added {new_name}!")
+
+                if vec is not None:
+
+                    new_img.seek(0)
+
+                    upload_result = cloudinary.uploader.upload(new_img)
+                    image_url = upload_result["secure_url"]
+
+                    if enroll_face(new_name, vec, image_url):
+
+                        st.success(f"{new_name} added successfully!")
+                        st.image(image_url,width=200)
+
                     else:
-                        st.error("Database save failed.")
+                        st.error("Database save failed")
+
                 else:
-                    st.error("No face detected in enrollment photo.")
+                    st.error("No face detected")
+
         else:
-            st.warning("Please provide name and image.")
+            st.warning("Provide name and image")
 
-# --- Main Search Interface ---
-uploaded_file = st.file_uploader("Choose a face image to search...", type=['jpg', 'png', 'jpeg'])
 
-if uploaded_file:
-    img = Image.open(uploaded_file)
-    st.image(img, caption="Uploaded Image", width=250)
-    
-    if st.button("Search for Matches"):
-        with st.spinner("Searching..."):
-            query_vec = get_embedding(np.array(img))
-            
-            if query_vec:
-                results = search_faces(query_vec, limit=3)
-                
-                if results:
-                    st.success(f"Found {len(results)} matches!")
-                    cols = st.columns(len(results))
-                    for idx, match in enumerate(results):
-                        with cols[idx]:
-                            st.metric("Match Score", f"{round(match['score'] * 100, 1)}%")
-                            # Display the saved image with fixed dimensions
-                            if os.path.exists(match['image_path']):
-                                match_img = Image.open(match['image_path'])
-                                match_img = match_img.resize((300,300))
-                                st.image(match_img, use_column_width=True)
-                            st.subheader(match['name'])
+# ======================================================
+# MODE SELECTOR
+# ======================================================
+
+mode = st.radio(
+    "Select Mode",
+    ["Upload Image Search", "Face Builder Search"]
+)
+
+# ======================================================
+# MODE 1 : IMAGE UPLOAD SEARCH
+# ======================================================
+
+if mode == "Upload Image Search":
+
+    uploaded_file = st.file_uploader(
+        "Choose a face image to search...",
+        type=['jpg','png','jpeg']
+    )
+
+    if uploaded_file:
+
+        img = Image.open(uploaded_file)
+        st.image(img,caption="Uploaded Image",width=200)
+
+        if st.button("Search for Matches"):
+
+            with st.spinner("Searching..."):
+
+                query_vec = get_embedding(np.array(img))
+
+                if query_vec is not None:
+
+                    results = search_faces(query_vec,limit=3)
+
+                    if results:
+
+                        st.success(f"Found {len(results)} matches!")
+
+                        cols = st.columns(len(results))
+
+                        for idx,match in enumerate(results):
+
+                            with cols[idx]:
+
+                                st.metric(
+                                    "Match Score",
+                                    f"{round(match['score']*100,1)}%"
+                                )
+
+                                # display image at fixed square size to keep results uniform
+                                st.image(match["image_url"], width=200)
+                                st.subheader(match["name"])
+
+                    else:
+                        st.warning("No matches found")
+
                 else:
-                    st.warning("No matches found.")
-            else:
-                st.error("Face not detected in the uploaded photo.")
+                    st.error("Face not detected")
+
