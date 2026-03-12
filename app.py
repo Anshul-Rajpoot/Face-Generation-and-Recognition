@@ -80,7 +80,7 @@ with st.sidebar:
 
 mode = st.radio(
     "Select Mode",
-    ["Upload Image Search", "Face Builder Search"]
+    ["Upload Image Search"]
 )
 
 
@@ -95,10 +95,19 @@ if mode == "Upload Image Search":
         type=['jpg','png','jpeg']
     )
 
+    # ---------------- Threshold Slider ----------------
+
+    threshold = st.slider(
+        "Match Threshold",
+        min_value=0.4,
+        max_value=0.9,
+        value=0.65,
+        step=0.05
+    )
+
     if uploaded_file:
 
         img = Image.open(uploaded_file)
-
         st.image(img, caption="Uploaded Image", width=200)
 
         if st.button("Search for Matches"):
@@ -109,15 +118,21 @@ if mode == "Upload Image Search":
 
                 if query_vec is not None:
 
-                    results = search_faces(query_vec, limit=3)
+                    results = search_faces(query_vec, limit=5)
 
-                    if results:
+                    # ---------------- Apply Threshold ----------------
 
-                        st.success(f"Found {len(results)} matches!")
+                    filtered_results = [
+                        r for r in results if r.get("score", 0) >= threshold
+                    ]
 
-                        cols = st.columns(len(results))
+                    if filtered_results:
 
-                        for idx, match in enumerate(results):
+                        st.success(f"Found {len(filtered_results)} matches!")
+
+                        cols = st.columns(len(filtered_results))
+
+                        for idx, match in enumerate(filtered_results):
 
                             with cols[idx]:
 
@@ -137,7 +152,7 @@ if mode == "Upload Image Search":
                                 st.subheader(name)
 
                     else:
-                        st.warning("No matches found")
+                        st.warning("No matches above threshold")
 
                 else:
                     st.error("Face not detected")
