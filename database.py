@@ -52,7 +52,7 @@ def search_faces(query_embedding, limit=3):
             "$project": {
                 "_id": 0,
                 "name": 1,
-                "image_url": 1,
+                "image_path": 1,
                 "score": {"$meta": "vectorSearchScore"}
             }
         }
